@@ -1,0 +1,41 @@
+# Binaries and object files
+*.o
+*.a
+*.so
+*.dylib
+*.dll
+*.exe
+
+# Factor image and compilation artifacts
+*.image
+*.image.fresh
+*.factor-boot*
+
+# Test and run outputs
+*.ts
+*.m4s
+*.mp4
+*.m3u8
+*.mpd
+test_output/
+stream_output/
+build/
+dist/
+
+# Python artifacts
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+.venv/
+env/
+venv/
+
+# System and editor files
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*~
+.vscode/
+.idea/
