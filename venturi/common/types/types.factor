@@ -4,7 +4,7 @@
 ! Canonical data models and type definitions for media streams,
 ! rational timestamps, elementary samples, track layouts, and segments.
 
-USING: accessors byte-arrays kernel math math.functions sequences
+USING: accessors byte-arrays kernel locals math math.functions sequences
 strings vectors ;
 IN: venturi.common.types
 
@@ -23,9 +23,9 @@ TUPLE: rational-time
 : time>seconds ( rational-time -- seconds )
     [ num>> ] [ den>> ] bi / >float ;
 
-: rescale-time ( num src-den dst-den -- new-num )
-    dup zero? [ "target timescale denominator cannot be zero" throw ] when
-    [ * ] dip /i ;
+:: rescale-time ( num src-den dst-den -- new-num )
+    src-den zero? [ "source timescale denominator cannot be zero" throw ] when
+    num dst-den * src-den /i ;
 
 ! Media sample encapsulation representing a discrete encoded frame or packet.
 ! flags bitmask:

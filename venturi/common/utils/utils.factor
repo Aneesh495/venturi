@@ -92,10 +92,10 @@ IN: venturi.common.utils
     bytes [ vec push ] each ;
 
 ! Safe subseq that clamps bounds to sequence length.
-:: subseq-safe ( seq from to -- sub )
+:: subseq-safe ( from to seq -- sub )
     0 from max seq length min :> clamped-from
     clamped-from to max seq length min :> clamped-to
-    seq clamped-from clamped-to subseq ;
+    clamped-from clamped-to seq subseq ;
 
 ! Formats a byte-array into a hex string representation.
 :: bytes>hex ( bytes -- str )
@@ -115,7 +115,7 @@ IN: venturi.common.utils
     from-index :> curr!
     f :> found!
     [ curr max-start <= found not and ] [
-        haystack curr curr n-len + subseq needle = [
+        curr curr n-len + haystack subseq needle = [
             curr found!
         ] [
             curr 1 + curr!
