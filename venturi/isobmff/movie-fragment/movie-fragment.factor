@@ -6,7 +6,7 @@
 ! Decode Time (tfdt), Track Fragment Run (trun), and Movie Extends (mvex/trex).
 
 USING: accessors arrays byte-arrays byte-vectors kernel locals math
-sequences venturi.common.types venturi.common.utils
+math.bitwise sequences vectors venturi.common.types venturi.common.utils
 venturi.isobmff.box-reader venturi.isobmff.box-writer
 venturi.isobmff.constants ;
 IN: venturi.isobmff.movie-fragment
@@ -32,6 +32,13 @@ IN: venturi.isobmff.movie-fragment
     p sequence-num push-be32
     FOURCC_MFHD 0 0 p >byte-array serialize-full-box ;
 
+! Parses an mfhd FullBox extracting its sequence number.
+:: parse-mfhd ( box -- seq-num/f )
+    box payload>> :> p
+    p length 8 < [ f ] [
+        p 4 read-be32
+    ] if ;
+
 ! Builds a Track Fragment Header (tfhd) FullBox.
 ! Flags:
 !   0x020000: default-base-is-moof
@@ -43,11 +50,30 @@ IN: venturi.isobmff.movie-fragment
     0x020020 :> flags
     FOURCC_TFHD 0 flags p >byte-array serialize-full-box ;
 
+! Parses a tfhd FullBox extracting track_id.
+:: parse-tfhd ( box -- track-id/f )
+    box payload>> :> p
+    p length 8 < [ f ] [
+        p 4 read-be32
+    ] if ;
+
 ! Builds a Track Fragment Base Media Decode Time (tfdt) FullBox (version 1: 64-bit).
 :: build-tfdt-box ( base-decode-time -- box-bytes )
     8 <byte-vector> :> p
     p base-decode-time push-be64
     FOURCC_TFDT 1 0 p >byte-array serialize-full-box ;
+
+! Parses a tfdt FullBox extracting baseMediaDecodeTime (supporting version 0 and 1).
+:: parse-tfdt ( box -- decode-time/f )
+    box payload>> :> p
+    p length 8 < [ f ] [
+        p 0 nth :> ver
+        ver 1 = [
+            p length 12 < [ f ] [ p 4 read-be64 ] if
+        ] [
+            p 4 read-be32
+        ] if
+    ] if ;
 
 ! Builds a Track Fragment Run (trun) FullBox for a sequence of samples.
 ! Flags:
@@ -72,9 +98,6 @@ IN: venturi.isobmff.movie-fragment
             base-flags 0x000800 bitor base-flags!
         ] when
 
-        ! Calculate payload size
-        ! 4 (sample_count) + 4 (data_offset) + (4 if first-flags)
-        ! + sample_count * (4 duration + 4 size + (4 if composition-offset))
         samples length :> s-count
         4 4 + :> fixed-head!
         first-is-keyframe? [ fixed-head 4 + fixed-head! ] when
@@ -116,12 +139,11 @@ IN: venturi.isobmff.movie-fragment
 
 ! Synthesizes a CMAF Media Segment (.m4s) consisting of a moof box followed by an mdat box.
 :: build-cmaf-segment ( sequence-num track-id base-decode-time samples -- segment-bytes )
-    ! Check if any sample has non-zero composition offset (B-frames)
     samples [ sample-composition-offset zero? not ] any? :> has-ctts?
 
     ! Phase 1: Estimate moof size to determine mdat start
     sequence-num track-id base-decode-time samples has-ctts? estimate-moof-size :> estimated-moof-sz
-    estimated-moof-sz 8 + :> accurate-data-offset  ! moof length + 8 bytes mdat header
+    estimated-moof-sz 8 + :> accurate-data-offset
 
     ! Phase 2: Build final traf with exact data-offset
     sequence-num build-mfhd-box :> mfhd-box
