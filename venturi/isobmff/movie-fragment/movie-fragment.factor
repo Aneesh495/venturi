@@ -123,6 +123,75 @@ IN: venturi.isobmff.movie-fragment
         FOURCC_TRUN 0 base-flags p >byte-array serialize-full-box
     ] if ;
 
+! Parses a trun box and reconstructs media-sample tuples.
+:: parse-trun-samples ( trun-box track-id base-decode-time mdat-bytes -- samples )
+    trun-box payload>> :> p
+    p length 8 < [ V{ } clone ] [
+        p 1 read-be24 :> flags
+        p 4 read-be32 :> sample-count
+        8 :> off!
+        0 :> data-offset!
+
+        flags 0x000001 bitand zero? not [
+            p off read-be32 data-offset!
+            off 4 + off!
+        ] when
+
+        0 :> first-sample-flags!
+        flags 0x000004 bitand zero? not [
+            p off read-be32 first-sample-flags!
+            off 4 + off!
+        ] when
+
+        sample-count <vector> :> out
+        base-decode-time :> curr-dts!
+        0 :> curr-mdat-idx!
+
+        sample-count <iota> [
+            :> s-idx
+            off p length < [
+                0 :> s-dur!
+                flags 0x000100 bitand zero? not [
+                    p off read-be32 s-dur!
+                    off 4 + off!
+                ] when
+
+                0 :> s-sz!
+                flags 0x000200 bitand zero? not [
+                    p off read-be32 s-sz!
+                    off 4 + off!
+                ] when
+
+                0 :> s-flags!
+                s-idx zero? first-sample-flags zero? not and [
+                    first-sample-flags s-flags!
+                ] [
+                    flags 0x000400 bitand zero? not [
+                        p off read-be32 s-flags!
+                        off 4 + off!
+                    ] when
+                ] if
+
+                0 :> s-ctts!
+                flags 0x000800 bitand zero? not [
+                    p off read-be32 s-ctts!
+                    off 4 + off!
+                ] when
+
+                curr-mdat-idx curr-mdat-idx s-sz + mdat-bytes subseq-safe :> s-data
+                curr-dts s-ctts + :> s-pts
+
+                track-id s-pts curr-dts s-dur s-sz
+                s-flags SAMPLE_FLAG_SYNC_KEYFRAME = 1 0 ?
+                s-data <media-sample> out push
+
+                curr-dts s-dur + curr-dts!
+                curr-mdat-idx s-sz + curr-mdat-idx!
+            ] when
+        ] each
+        out
+    ] if ;
+
 ! Builds a complete Track Fragment (traf) container box.
 :: build-traf-box ( track-id base-decode-time samples data-offset has-composition-offset? -- box-bytes )
     track-id SAMPLE_FLAG_NON_SYNC build-tfhd-box :> tfhd
