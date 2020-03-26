@@ -101,7 +101,7 @@ TUPLE: stsc-entry
         p 4 read-be32 :> uniform-size
         p 8 read-be32 :> sample-count
         uniform-size zero? [
-            sample-count <array> :> out
+            sample-count 0 <array> :> out
             12 :> off!
             sample-count <iota> [
                 :> i
@@ -124,7 +124,7 @@ TUPLE: stsc-entry
         FOURCC_STTS 0 0 p >byte-array serialize-full-box
     ] [
         V{ } clone :> runs
-        durations 0 nth :> curr-delta!
+        0 durations nth :> curr-delta!
         1 :> curr-count!
         durations 1 tail [
             :> d
@@ -142,8 +142,8 @@ TUPLE: stsc-entry
         p runs length push-be32
         runs [
             :> run
-            p run 0 nth push-be32
-            p run 1 nth push-be32
+            p 0 run nth push-be32
+            p 1 run nth push-be32
         ] each
         FOURCC_STTS 0 0 p >byte-array serialize-full-box
     ] if ;
@@ -156,7 +156,7 @@ TUPLE: stsc-entry
         FOURCC_CTTS 0 0 p >byte-array serialize-full-box
     ] [
         V{ } clone :> runs
-        offsets 0 nth :> curr-delta!
+        0 offsets nth :> curr-delta!
         1 :> curr-count!
         offsets 1 tail [
             :> d
@@ -174,8 +174,8 @@ TUPLE: stsc-entry
         p runs length push-be32
         runs [
             :> run
-            p run 0 nth push-be32
-            p run 1 nth push-be32
+            p 0 run nth push-be32
+            p 1 run nth push-be32
         ] each
         FOURCC_CTTS 0 0 p >byte-array serialize-full-box
     ] if ;

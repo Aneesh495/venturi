@@ -15,7 +15,7 @@ IN: venturi.isobmff.chunk-offset
     box payload>> :> p
     p length 8 < [ { } ] [
         p 4 read-be32 :> entry-count
-        entry-count <array> :> out
+        entry-count 0 <array> :> out
         8 :> off!
         entry-count <iota> [
             :> i
@@ -32,7 +32,7 @@ IN: venturi.isobmff.chunk-offset
     box payload>> :> p
     p length 8 < [ { } ] [
         p 4 read-be32 :> entry-count
-        entry-count <array> :> out
+        entry-count 0 <array> :> out
         8 :> off!
         entry-count <iota> [
             :> i
@@ -58,13 +58,13 @@ IN: venturi.isobmff.chunk-offset
         ! Advance stsc-idx if next entry applies
         [
             stsc-idx 1 + stsc-entries length < [
-                stsc-entries stsc-idx 1 + nth first-chunk>> chunk-num <=
+                stsc-idx 1 + stsc-entries nth first-chunk>> chunk-num <=
             ] [ f ] if
         ] [
             stsc-idx 1 + stsc-idx!
         ] while
 
-        stsc-entries stsc-idx nth samples-per-chunk>> :> samples-in-chunk
+        stsc-idx stsc-entries nth samples-per-chunk>> :> samples-in-chunk
         c-idx chunk-offsets nth :> curr-chunk-offset!
 
         samples-in-chunk <iota> [

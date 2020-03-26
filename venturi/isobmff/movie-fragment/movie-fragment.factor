@@ -67,7 +67,7 @@ IN: venturi.isobmff.movie-fragment
 :: parse-tfdt ( box -- decode-time/f )
     box payload>> :> p
     p length 8 < [ f ] [
-        p 0 nth :> ver
+        0 p nth :> ver
         ver 1 = [
             p length 12 < [ f ] [ p 4 read-be64 ] if
         ] [
@@ -88,7 +88,7 @@ IN: venturi.isobmff.movie-fragment
         p 0 push-be32
         FOURCC_TRUN 0 0 p >byte-array serialize-full-box
     ] [
-        samples 0 nth keyframe? :> first-is-keyframe?
+        0 samples nth keyframe? :> first-is-keyframe?
 
         0x000301 :> base-flags!  ! data-offset (0x1) + duration (0x100) + size (0x200)
         first-is-keyframe? [

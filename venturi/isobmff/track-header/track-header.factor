@@ -64,9 +64,9 @@ TUPLE: hdlr-info
 ! Packs a 3-character ISO-639-2/T language code (for example "und" or "eng") into uint16.
 :: pack-iso-language ( lang-str -- u16 )
     lang-str length 3 < [ 0x55C4 ] [ ! default "und"
-        lang-str 0 nth 0x60 - 0x1F bitand 10 shift
-        lang-str 1 nth 0x60 - 0x1F bitand 5 shift +
-        lang-str 2 nth 0x60 - 0x1F bitand +
+        0 lang-str nth 0x60 - 0x1F bitand 10 shift
+        1 lang-str nth 0x60 - 0x1F bitand 5 shift +
+        2 lang-str nth 0x60 - 0x1F bitand +
     ] if ;
 
 ! Unpacks a uint16 ISO-639-2/T language code into a 3-character ASCII string.
@@ -80,7 +80,7 @@ TUPLE: hdlr-info
 :: parse-mvhd ( box -- info/f )
     box payload>> :> p
     p length 100 < [ f ] [
-        p 0 nth :> ver
+        0 p nth :> ver
         ver 1 = [
             p 20 read-be32 :> timescale
             p 24 read-be64 :> duration
@@ -98,7 +98,7 @@ TUPLE: hdlr-info
 :: parse-tkhd ( box -- info/f )
     box payload>> :> p
     p length 84 < [ f ] [
-        p 0 nth :> ver
+        0 p nth :> ver
         ver 1 = [
             p 20 read-be32 :> track-id
             p 28 read-be64 :> duration
@@ -120,7 +120,7 @@ TUPLE: hdlr-info
 :: parse-mdhd ( box -- info/f )
     box payload>> :> p
     p length 24 < [ f ] [
-        p 0 nth :> ver
+        0 p nth :> ver
         ver 1 = [
             p 20 read-be32 :> timescale
             p 24 read-be64 :> duration
@@ -139,7 +139,7 @@ TUPLE: hdlr-info
     box payload>> :> p
     p length 24 < [ f ] [
         p 8 read-be32 :> h-type
-        p 24 p length subseq-safe :> name-bytes
+        24 p length p subseq-safe :> name-bytes
         name-bytes >string :> name-str
         h-type name-str <hdlr-info>
     ] if ;

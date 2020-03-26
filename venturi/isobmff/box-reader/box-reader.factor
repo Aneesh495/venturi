@@ -25,51 +25,51 @@ TUPLE: full-box < mp4-box
     { version integer read-only }
     { flags integer read-only } ;
 
-: <full-box> ( type size header-size offset payload ver flg -- fbox )
-    [ <mp4-box> ] 2dip full-box boa ;
+:: <full-box> ( type size header-size offset payload ver flg -- fbox )
+    type size header-size offset payload V{ } clone ver flg full-box boa ;
 
 ! Returns true if the FourCC identifies a structural container atom.
 :: container-box? ( fourcc -- ? )
     fourcc {
-        FOURCC_MOOV
-        FOURCC_TRAK
-        FOURCC_MDIA
-        FOURCC_MINF
-        FOURCC_DINF
-        FOURCC_STBL
-        FOURCC_MVEX
-        FOURCC_MOOF
-        FOURCC_TRAF
+        0x6D6F6F76  ! moov
+        0x7472616B  ! trak
+        0x6D646961  ! mdia
+        0x6D696E66  ! minf
+        0x64696E66  ! dinf
+        0x7374626C  ! stbl
+        0x6D766578  ! mvex
+        0x6D6F6F66  ! moof
+        0x74726166  ! traf
     } member? ;
 
 ! Returns true if the FourCC identifies an ISO FullBox with version and flags.
 :: full-box-type? ( fourcc -- ? )
     fourcc {
-        FOURCC_MVHD
-        FOURCC_TKHD
-        FOURCC_MDHD
-        FOURCC_HDLR
-        FOURCC_VMHD
-        FOURCC_SMHD
-        FOURCC_DREF
-        FOURCC_STSD
-        FOURCC_STTS
-        FOURCC_CTTS
-        FOURCC_STSC
-        FOURCC_STSZ
-        FOURCC_STZ2
-        FOURCC_STCO
-        FOURCC_CO64
-        FOURCC_STSS
-        FOURCC_SDTP
-        FOURCC_MEHD
-        FOURCC_TREX
-        FOURCC_MFHD
-        FOURCC_TFHD
-        FOURCC_TFDT
-        FOURCC_TRUN
-        FOURCC_SIDX
-        FOURCC_EMSG
+        0x6D766864  ! mvhd
+        0x746B6864  ! tkhd
+        0x6D646864  ! mdhd
+        0x68646C72  ! hdlr
+        0x766D6864  ! vmhd
+        0x736D6864  ! smhd
+        0x64726566  ! dref
+        0x73747364  ! stsd
+        0x73747473  ! stts
+        0x63747473  ! ctts
+        0x73747363  ! stsc
+        0x7374737A  ! stsz
+        0x73747A32  ! stz2
+        0x7374636F  ! stco
+        0x636F3634  ! co64
+        0x73747373  ! stss
+        0x73647470  ! sdtp
+        0x6D656864  ! mehd
+        0x74726578  ! trex
+        0x6D666864  ! mfhd
+        0x74666864  ! tfhd
+        0x74666474  ! tfdt
+        0x7472756E  ! trun
+        0x73696478  ! sidx
+        0x656D7367  ! emsg
     } member? ;
 
 ! Reads the box header from bytes at offset. Returns ( type size header-size ).
@@ -110,7 +110,7 @@ DEFER: parse-boxes
 
         fourcc full-box-type? [
             payload length 4 >= [
-                payload 0 nth :> ver
+                0 payload nth :> ver
                 payload 1 read-be24 :> flg
                 fourcc b-size h-size p-start payload ver flg <full-box>
             ] [
@@ -140,15 +140,7 @@ DEFER: parse-boxes
 
 ! Searches immediate children of a box for the first match with target-type.
 :: find-child-box ( box target-type -- child/f )
-    f :> found!
-    box children>> [
-        dup type>> target-type = [
-            found! drop
-        ] [
-            drop
-        ] if
-    ] each
-    found ;
+    box children>> [ type>> target-type = ] find nip ;
 
 ! Searches immediate children of a box for all matches with target-type.
 :: find-child-boxes ( box target-type -- matching-children )
