@@ -4,7 +4,7 @@
 ! End-to-end MPEG-2 Transport Stream continuous demuxer, assembling PAT, PMT,
 ! and synchronized elementary video and audio tracks from broadcast byte feeds.
 
-USING: accessors arrays byte-arrays byte-vectors hashtables kernel
+USING: accessors arrays assocs byte-arrays byte-vectors hashtables kernel
 locals math math.order sequences sets vectors venturi.common.types
 venturi.common.utils venturi.mpegts.constants venturi.mpegts.packet
 venturi.mpegts.pes venturi.mpegts.psi ;

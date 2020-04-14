@@ -96,9 +96,9 @@ TUPLE: media-track
     [ duration>> ] [ timescale>> ] bi
     dup zero? [ 2drop 0.0 ] [ / >float ] if ;
 
-: add-sample ( sample track -- )
-    [ samples>> push ]
-    [ [ duration>> ] [ duration>> ] bi* + >>duration drop ] 2bi ;
+:: add-sample ( sample track -- )
+    sample track samples>> push
+    track track duration>> sample duration>> + >>duration drop ;
 
 ! Packaged media segment representation for HLS and DASH distribution.
 TUPLE: media-segment

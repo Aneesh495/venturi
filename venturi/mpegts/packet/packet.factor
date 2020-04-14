@@ -77,8 +77,8 @@ TUPLE: ts-packet
                             adapt-flags 4 bit? [
                                 adapt-len 6 >= [
                                     payload-start 1 + :> pcr-off
-                                    pcr-off packet-bytes read-be32 :> pcr-hi
-                                    pcr-off 4 + packet-bytes read-be16 :> pcr-lo
+                                    packet-bytes pcr-off read-be32 :> pcr-hi
+                                    packet-bytes pcr-off 4 + read-be16 :> pcr-lo
                                     pcr-hi 1 shift pcr-lo -15 shift 1 bitand + :> pcr-base
                                     pcr-lo 0x1FF bitand :> pcr-ext
                                     pcr-base 300 * pcr-ext + pcr-val!

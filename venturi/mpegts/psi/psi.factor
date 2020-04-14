@@ -46,7 +46,7 @@ TUPLE: pmt-info
 
         start-off payload length 3 - < [
             start-off payload nth :> table-id
-            start-off 1 + payload read-be16 0x0FFF bitand :> section-len
+            payload start-off 1 + read-be16 0x0FFF bitand :> section-len
             start-off section-len 3 + + :> section-end
 
             section-end payload length <= [
@@ -64,8 +64,8 @@ TUPLE: pmt-info
             8 :> curr!
             section-bytes length 4 - :> loop-end  ! exclude 4-byte CRC
             [ curr 4 + loop-end <= ] [
-                curr section-bytes read-be16 :> prog-num
-                curr 2 + section-bytes read-be16 0x1FFF bitand :> pmt-pid
+                section-bytes curr read-be16 :> prog-num
+                section-bytes curr 2 + read-be16 0x1FFF bitand :> pmt-pid
                 prog-num zero? not [  ! ignore network PID (prog 0)
                     prog-num pmt-pid <pat-entry> out push
                 ] when
@@ -79,18 +79,18 @@ TUPLE: pmt-info
 :: parse-pmt-section ( section-bytes -- pmt-info/f )
     section-bytes length 16 < [ f ] [
         0 section-bytes nth TABLE_ID_PMT = not [ f ] [
-            3 section-bytes read-be16 :> prog-num
-            8 section-bytes read-be16 0x1FFF bitand :> pcr-pid
-            10 section-bytes read-be16 0x0FFF bitand :> prog-info-len
+            section-bytes 3 read-be16 :> prog-num
+            section-bytes 8 read-be16 0x1FFF bitand :> pcr-pid
+            section-bytes 10 read-be16 0x0FFF bitand :> prog-info-len
 
             12 prog-info-len + :> es-start!
             section-bytes length 4 - :> es-end
             V{ } clone :> streams
 
-            [ es-start 5 + <= es-end <= ] [
+            [ es-start 5 + es-end <= ] [
                 es-start section-bytes nth :> s-type
-                es-start 1 + section-bytes read-be16 0x1FFF bitand :> e-pid
-                es-start 3 + section-bytes read-be16 0x0FFF bitand :> es-info-len
+                section-bytes es-start 1 + read-be16 0x1FFF bitand :> e-pid
+                section-bytes es-start 3 + read-be16 0x0FFF bitand :> es-info-len
 
                 es-start 5 + :> desc-start
                 desc-start es-info-len + es-end min :> desc-end

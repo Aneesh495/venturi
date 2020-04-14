@@ -22,8 +22,8 @@ TUPLE: pes-packet
 ! Decodes a 33-bit PTS or DTS timestamp from 5 contiguous bytes conforming to ISO/IEC 13818-1.
 :: decode-pes-timestamp ( bytes offset -- ts-33bit )
     offset bytes nth :> b0
-    offset 1 + bytes read-be16 :> w1
-    offset 3 + bytes read-be16 :> w2
+    bytes offset 1 + read-be16 :> w1
+    bytes offset 3 + read-be16 :> w2
 
     b0 0x0E bitand 29 shift
     w1 -1 shift 0x7FFF bitand 15 shift +
@@ -32,10 +32,10 @@ TUPLE: pes-packet
 ! Parses a complete reassembled PES packet byte array.
 :: parse-pes-packet ( pes-bytes -- pes/f )
     pes-bytes length 6 < [ f ] [
-        0 pes-bytes read-be24 :> prefix
+        pes-bytes 0 read-be24 :> prefix
         prefix 0x000001 = not [ f ] [
             3 pes-bytes nth :> s-id
-            4 pes-bytes read-be16 :> p-len
+            pes-bytes 4 read-be16 :> p-len
 
             ! Default PTS/DTS to 0
             0 :> pts!
@@ -71,7 +71,8 @@ TUPLE: pes-packet
             ] when
 
             payload-start pes-bytes length <= [
-                payload-start pes-bytes length pes-bytes subseq-safe :> pl
+                p-len 0 > [ 6 p-len + pes-bytes length min ] [ pes-bytes length ] if :> pes-end
+                payload-start pes-end pes-bytes subseq-safe :> pl
                 s-id pts dts pl <pes-packet>
             ] [ f ] if
         ] if

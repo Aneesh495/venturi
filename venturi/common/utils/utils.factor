@@ -97,6 +97,15 @@ IN: venturi.common.utils
     clamped-from to max seq length min :> clamped-to
     clamped-from clamped-to seq subseq ;
 
+! Copies bytes from src [src-from, src-to) into dst starting at dst-from.
+:: copy-bytes ( src-from src-to src dst-from dst -- )
+    src-from src-to src subseq-safe :> slice
+    0 :> i!
+    slice [
+        dst-from i + dst set-nth
+        i 1 + i!
+    ] each ;
+
 ! Formats a byte-array into a hex string representation.
 :: bytes>hex ( bytes -- str )
     "0123456789ABCDEF" :> hex-digits
