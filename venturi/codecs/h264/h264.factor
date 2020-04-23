@@ -6,7 +6,8 @@
 ! and NAL unit classification.
 
 USING: accessors arrays byte-arrays byte-vectors kernel locals math
-math.bitwise sequences vectors venturi.common.utils ;
+math.bitwise sequences vectors venturi.common.bitstream
+venturi.common.exp-golomb venturi.common.utils ;
 IN: venturi.codecs.h264
 
 ! Canonical H.264 NAL Unit Types
@@ -136,3 +137,120 @@ TUPLE: nal-unit
 ! Determines if a NAL unit represents a parameter set (SPS or PPS).
 : parameter-set-nal? ( nal -- ? )
     type>> [ NAL_SPS = ] [ NAL_PPS = ] bi or ;
+
+! Sequence Parameter Set (SPS) extracted metadata
+TUPLE: sps-info
+    { profile-idc integer read-only }
+    { profile-compat integer read-only }
+    { level-idc integer read-only }
+    { sps-id integer read-only }
+    { width integer read-only }
+    { height integer read-only }
+    { frame-mbs-only? boolean read-only } ;
+
+: <sps-info> ( prof-idc prof-compat lvl-idc sps-id w h mbs-only? -- sps )
+    sps-info boa ;
+
+! Picture Parameter Set (PPS) extracted metadata
+TUPLE: pps-info
+    { pps-id integer read-only }
+    { sps-id integer read-only }
+    { cabac? boolean read-only } ;
+
+: <pps-info> ( pps-id sps-id cabac? -- pps )
+    pps-info boa ;
+
+! Parses an H.264 SPS raw byte sequence payload (RBSP).
+:: parse-sps ( rbsp-bytes -- sps/f )
+    rbsp-bytes length 3 < [ f ] [
+        rbsp-bytes <bit-reader> :> reader
+        reader 8 read-bits :> profile-idc
+        reader 8 read-bits :> profile-compat
+        reader 8 read-bits :> level-idc
+        reader read-ue :> sps-id
+
+        ! High profile extensions (FRExt)
+        profile-idc { 100 110 122 244 44 83 86 118 128 138 139 134 135 } member? [
+            reader read-ue :> chroma-format-idc
+            chroma-format-idc 3 = [
+                reader 1 read-bits drop ! separate_colour_plane_flag
+            ] when
+            reader read-ue drop ! bit_depth_luma_minus8
+            reader read-ue drop ! bit_depth_chroma_minus8
+            reader 1 read-bits drop ! qpprime_y_zero_transform_bypass_flag
+            reader 1 read-bits 1 = [ ! seq_scaling_matrix_present_flag
+                chroma-format-idc 3 = 12 8 ? [
+                    reader 1 read-bits 1 = [
+                        ! Skip scaling matrix coefficients
+                        16 :> mat-size
+                        8 :> last-scale!
+                        8 :> next-scale!
+                        0 :> j!
+                        [ j mat-size < ] [
+                            next-scale zero? not [
+                                reader read-se :> delta-scale
+                                last-scale delta-scale + 256 + 256 mod next-scale!
+                            ] when
+                            next-scale zero? [ last-scale ] [ next-scale ] if last-scale!
+                            j 1 + j!
+                        ] while
+                    ] when
+                ] times
+            ] when
+        ] when
+
+        reader read-ue drop ! log2_max_frame_num_minus4
+        reader read-ue :> pic-order-cnt-type
+        pic-order-cnt-type 0 = [
+            reader read-ue drop ! log2_max_pic_order_cnt_lsb_minus4
+        ] [
+            pic-order-cnt-type 1 = [
+                reader 1 read-bits drop ! delta_pic_order_always_zero_flag
+                reader read-se drop ! offset_for_non_ref_pic
+                reader read-se drop ! offset_for_top_to_bottom_field
+                reader read-ue :> num-ref-frames-in-pic-order-cnt-cycle
+                num-ref-frames-in-pic-order-cnt-cycle [
+                    reader read-se drop
+                ] times
+            ] when
+        ] if
+
+        reader read-ue drop ! max_num_ref_frames
+        reader 1 read-bits drop ! gaps_in_frame_num_value_allowed_flag
+        reader read-ue :> pic-width-in-mbs-minus1
+        reader read-ue :> pic-height-in-map-units-minus1
+        reader 1 read-bits 1 = :> frame-mbs-only?
+
+        frame-mbs-only? not [
+            reader 1 read-bits drop ! mb_adaptive_frame_field_flag
+        ] when
+
+        reader 1 read-bits drop ! direct_8x8_inference_flag
+
+        0 :> crop-left!
+        0 :> crop-right!
+        0 :> crop-top!
+        0 :> crop-bottom!
+
+        reader 1 read-bits 1 = [ ! frame_cropping_flag
+            reader read-ue crop-left!
+            reader read-ue crop-right!
+            reader read-ue crop-top!
+            reader read-ue crop-bottom!
+        ] when
+
+        pic-width-in-mbs-minus1 1 + 16 * crop-left crop-right + 2 * - :> width
+        pic-height-in-map-units-minus1 1 + 16 * frame-mbs-only? 1 2 ? * crop-top crop-bottom + 2 * - :> height
+
+        profile-idc profile-compat level-idc sps-id width height frame-mbs-only? <sps-info>
+    ] if ;
+
+! Parses an H.264 PPS raw byte sequence payload (RBSP).
+:: parse-pps ( rbsp-bytes -- pps/f )
+    rbsp-bytes length zero? [ f ] [
+        rbsp-bytes <bit-reader> :> reader
+        reader read-ue :> pps-id
+        reader read-ue :> sps-id
+        reader 1 read-bits 1 = :> cabac?
+        pps-id sps-id cabac? <pps-info>
+    ] if ;
