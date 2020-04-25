@@ -7,7 +7,8 @@
 
 USING: accessors arrays byte-arrays byte-vectors kernel locals math
 math.bitwise sequences vectors venturi.common.bitstream
-venturi.common.exp-golomb venturi.common.utils ;
+venturi.common.exp-golomb venturi.common.utils
+venturi.isobmff.box-writer venturi.isobmff.constants ;
 IN: venturi.codecs.h264
 
 ! Canonical H.264 NAL Unit Types
@@ -253,4 +254,94 @@ TUPLE: pps-info
         reader read-ue :> sps-id
         reader 1 read-bits 1 = :> cabac?
         pps-id sps-id cabac? <pps-info>
+    ] if ;
+
+! Synthesizes an ISO/IEC 14496-15 AVCDecoderConfigurationRecord.
+:: build-avcc-record ( sps-nal-bytes pps-nal-bytes -- avcc-bytes )
+    1024 <byte-vector> :> buf
+    sps-nal-bytes parse-sps :> sps
+    sps [
+        sps profile-idc>> :> p-idc
+        sps profile-compat>> :> p-compat
+        sps level-idc>> :> l-idc
+
+        buf 1 push-u8           ! configurationVersion = 1
+        buf p-idc push-u8       ! AVCProfileIndication
+        buf p-compat push-u8    ! profile_compatibility
+        buf l-idc push-u8       ! AVCLevelIndication
+        buf 0xFF push-u8        ! 6 bits reserved (111111b) | 2 bits lengthSizeMinusOne (11b = 4 bytes)
+        buf 0xE1 push-u8        ! 3 bits reserved (111b) | 5 bits numOfSPS (00001b = 1)
+        buf sps-nal-bytes length push-be16
+        buf sps-nal-bytes push-bytes
+
+        buf 1 push-u8           ! numOfPPS = 1
+        buf pps-nal-bytes length push-be16
+        buf pps-nal-bytes push-bytes
+    ] [
+        buf 1 push-u8
+        buf 66 push-u8
+        buf 0 push-u8
+        buf 31 push-u8
+        buf 0xFF push-u8
+        buf 0xE1 push-u8
+        buf sps-nal-bytes length push-be16
+        buf sps-nal-bytes push-bytes
+        buf 1 push-u8
+        buf pps-nal-bytes length push-be16
+        buf pps-nal-bytes push-bytes
+    ] if
+    buf >byte-array ;
+
+! Wraps an AVCDecoderConfigurationRecord inside an avcC ISOBMFF box.
+:: build-avcc-box ( sps-nal-bytes pps-nal-bytes -- box-bytes )
+    sps-nal-bytes pps-nal-bytes build-avcc-record :> rec
+    FOURCC_AVCC rec serialize-box ;
+
+! Converts an Annex B byte buffer into 4-byte length-prefixed AVC1 sample format.
+:: annex-b>avc1-sample ( annex-b-bytes -- avc1-bytes )
+    annex-b-bytes split-annex-b-nals :> nals
+    annex-b-bytes length 16 + <byte-vector> :> buf
+    nals [
+        :> n
+        n type>> NAL_AUD = not [
+            buf n data>> length push-be32
+            buf n data>> push-bytes
+        ] when
+    ] each
+    buf >byte-array ;
+
+! Parses an avcC record into SPS and PPS byte arrays.
+:: parse-avcc-record ( avcc-bytes -- sps-list pps-list )
+    V{ } clone :> sps-list
+    V{ } clone :> pps-list
+    avcc-bytes length 7 < [ sps-list pps-list ] [
+        5 avcc-bytes nth 0x1F bitand :> num-sps
+        6 :> off!
+        num-sps [
+            off 2 + avcc-bytes length <= [
+                avcc-bytes off read-be16 :> s-len
+                off 2 + off!
+                off s-len + avcc-bytes length <= [
+                    off off s-len + avcc-bytes subseq-safe sps-list push
+                    off s-len + off!
+                ] when
+            ] when
+        ] times
+
+        off avcc-bytes length < [
+            off avcc-bytes nth :> num-pps
+            off 1 + off!
+            num-pps [
+                off 2 + avcc-bytes length <= [
+                    avcc-bytes off read-be16 :> p-len
+                    off 2 + off!
+                    off p-len + avcc-bytes length <= [
+                        off off p-len + avcc-bytes subseq-safe pps-list push
+                        off p-len + off!
+                    ] when
+                ] when
+            ] times
+        ] when
+
+        sps-list pps-list
     ] if ;
