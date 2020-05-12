@@ -35,33 +35,33 @@ TUPLE: id3-frame
 ! Builds a text information frame (for example TIT2, TPE1, or user text TXXX).
 :: build-id3-txxx-frame ( desc val -- frame-bytes )
     128 <byte-vector> :> buf
-    "TXXX" >byte-array buf push-bytes
+    buf "TXXX" >byte-array push-bytes
 
     ! Payload: encoding (0x03 = UTF-8) + desc + 0x00 + val
-    1 <byte-vector> :> payload
-    0x03 payload push-u8
-    desc >byte-array payload push-bytes
-    0x00 payload push-u8
-    val >byte-array payload push-bytes
+    128 <byte-vector> :> payload
+    payload 0x03 push-u8
+    payload desc >byte-array push-bytes
+    payload 0x00 push-u8
+    payload val >byte-array push-bytes
 
-    payload length encode-synchsafe buf push-bytes
-    0 0 buf push-be16 ! flags = 0
-    payload >byte-array buf push-bytes
+    buf payload length encode-synchsafe push-bytes
+    buf 0 push-be16 ! flags = 0
+    buf payload >byte-array push-bytes
     buf >byte-array ;
 
 ! Builds an ID3v2 PRIV (private) frame.
 :: build-id3-priv-frame ( owner payload-bytes -- frame-bytes )
     128 <byte-vector> :> buf
-    "PRIV" >byte-array buf push-bytes
+    buf "PRIV" >byte-array push-bytes
 
-    1 <byte-vector> :> payload
-    owner >byte-array payload push-bytes
-    0x00 payload push-u8
-    payload-bytes payload push-bytes
+    128 <byte-vector> :> payload
+    payload owner >byte-array push-bytes
+    payload 0x00 push-u8
+    payload payload-bytes push-bytes
 
-    payload length encode-synchsafe buf push-bytes
-    0 0 buf push-be16 ! flags = 0
-    payload >byte-array buf push-bytes
+    buf payload length encode-synchsafe push-bytes
+    buf 0 push-be16 ! flags = 0
+    buf payload >byte-array push-bytes
     buf >byte-array ;
 
 ! Builds a standardized Apple HLS transport stream timestamp ID3 tag for PES alignment.
@@ -73,13 +73,13 @@ TUPLE: id3-frame
 
     ! Wrap in ID3v2.4 header
     1024 <byte-vector> :> tag-buf
-    "ID3" >byte-array tag-buf push-bytes
-    0x04 tag-buf push-u8 ! ID3v2.4
-    0x00 tag-buf push-u8 ! revision
-    0x00 tag-buf push-u8 ! flags = 0
+    tag-buf "ID3" >byte-array push-bytes
+    tag-buf 0x04 push-u8 ! ID3v2.4
+    tag-buf 0x00 push-u8 ! revision
+    tag-buf 0x00 push-u8 ! flags = 0
 
-    priv-frame length encode-synchsafe tag-buf push-bytes
-    priv-frame tag-buf push-bytes
+    tag-buf priv-frame length encode-synchsafe push-bytes
+    tag-buf priv-frame push-bytes
     tag-buf >byte-array ;
 
 ! Assembles an ID3v2.4 tag containing multiple pre-encoded frame byte arrays.
@@ -88,26 +88,26 @@ TUPLE: id3-frame
     0 :> total-frames-len!
     frame-byte-arrays [ length total-frames-len + total-frames-len! ] each
 
-    "ID3" >byte-array buf push-bytes
-    0x04 buf push-u8
-    0x00 buf push-u8
-    0x00 buf push-u8
-    total-frames-len encode-synchsafe buf push-bytes
-    frame-byte-arrays [ buf push-bytes ] each
+    buf "ID3" >byte-array push-bytes
+    buf 0x04 push-u8
+    buf 0x00 push-u8
+    buf 0x00 push-u8
+    buf total-frames-len encode-synchsafe push-bytes
+    frame-byte-arrays [ :> f-bytes buf f-bytes push-bytes ] each
     buf >byte-array ;
 
 ! Parses an ID3v2 tag buffer and returns an array of id3-frame tuples.
 :: parse-id3v2-tag ( tag-bytes -- frames )
     V{ } clone :> out
     tag-bytes length 10 < [ out ] [
-        tag-bytes 0 3 subseq-safe >string "ID3" = not [ out ] [
+        0 3 tag-bytes subseq-safe >string "ID3" = not [ out ] [
             tag-bytes 6 decode-synchsafe :> tag-size
             10 :> off!
             tag-size 10 + tag-bytes length min :> max-off
 
             [ off 10 + max-off <= ] [
                 off off 4 + tag-bytes subseq-safe >string :> frame-id
-                frame-id 0 nth 0 = [
+                0 frame-id nth 0 = [
                     max-off off! ! padding reached
                 ] [
                     tag-bytes off 4 + decode-synchsafe :> frame-len

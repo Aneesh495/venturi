@@ -69,7 +69,7 @@ TUPLE: hevc-nal-unit
                 payload-end payload-start > [
                     payload-start payload-end bytes subseq-safe :> nal-data
                     nal-data length 2 >= [
-                        nal-data 0 nth nal-data 1 nth parse-hevc-header :> ( n-type n-layer n-temp )
+                        0 nal-data nth 1 nal-data nth parse-hevc-header :> ( n-type n-layer n-temp )
                         2 nal-data length nal-data subseq-safe remove-emulation-prevention :> rbsp
                         n-type n-layer n-temp nal-data rbsp <hevc-nal-unit> nals push
                     ] when
@@ -85,11 +85,11 @@ TUPLE: hevc-nal-unit
 
 ! Determines if an HEVC NAL unit represents a keyframe (IDR or CRA).
 : hevc-keyframe? ( nal -- ? )
-    type>> { NAL_HEVC_IDR_W_RADL NAL_HEVC_IDR_N_LP NAL_HEVC_CRA_NUT } member? ;
+    type>> { 19 20 21 } member? ;
 
 ! Determines if an HEVC NAL unit is a parameter set (VPS, SPS, or PPS).
 : hevc-parameter-set? ( nal -- ? )
-    type>> { NAL_HEVC_VPS NAL_HEVC_SPS NAL_HEVC_PPS } member? ;
+    type>> { 32 33 34 } member? ;
 
 ! HEVC SPS metadata representation
 TUPLE: hevc-sps-info
@@ -121,12 +121,11 @@ TUPLE: hevc-sps-info
         reader 8 read-bits :> level-idc
 
         ! Sub-layer profile flags if max_sub_layers_minus1 > 0
-        max-sub-layers-minus1 [
-            reader 2 read-bits drop
-        ] times
-
-        max-sub-layers-minus1 8 < [
-            8 max-sub-layers-minus1 - 2 * [ reader 1 read-bits drop ] times
+        max-sub-layers-minus1 0 > [
+            max-sub-layers-minus1 [
+                reader 2 read-bits drop
+            ] times
+            8 max-sub-layers-minus1 - [ reader 2 read-bits drop ] times
         ] when
 
         reader read-ue :> sps-id

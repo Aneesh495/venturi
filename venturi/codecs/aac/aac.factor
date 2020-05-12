@@ -18,7 +18,7 @@ CONSTANT: AAC_SAMPLE_RATES {
 
 ! Maps a sampling frequency integer to its 4-bit standard index.
 :: sample-rate>index ( rate -- index )
-    AAC_SAMPLE_RATES rate index [ 4 ] unless* ;
+    rate AAC_SAMPLE_RATES index [ 4 ] unless* ;
 
 ! Maps a 4-bit index to its sampling frequency in Hz.
 :: index>sample-rate ( idx -- rate )

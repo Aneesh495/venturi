@@ -118,7 +118,7 @@ TUPLE: nal-unit
 
                 payload-end payload-start > [
                     payload-start payload-end bytes subseq-safe :> nal-data
-                    nal-data 0 nth parse-nal-header :> ( n-type n-ref )
+                    0 nal-data nth parse-nal-header :> ( n-type n-ref )
                     1 nal-data length nal-data subseq-safe remove-emulation-prevention :> rbsp
                     n-type n-ref nal-data rbsp <nal-unit> nals push
                 ] when
