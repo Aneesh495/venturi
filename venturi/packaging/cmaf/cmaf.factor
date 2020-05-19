@@ -116,10 +116,24 @@ IN: venturi.packaging.cmaf
     buf 0 push-be32 ! default_sample_flags = 0
     FOURCC_TREX 0 0 buf >byte-array serialize-full-box ;
 
+! Builds an ISO/IEC 14496-12 Movie Extends Header (mehd) box for overall duration declaration.
+:: build-mehd-box ( duration-64bit -- mehd-bytes )
+    8 <byte-vector> :> buf
+    buf duration-64bit push-be64
+    FOURCC_MEHD 1 0 buf >byte-array serialize-full-box ;
+
 ! Builds an ISO/IEC 14496-12 Movie Extends (mvex) box containing trex boxes for each track.
 :: build-mvex-box ( tracks -- mvex-bytes )
     tracks [ id>> build-trex-box ] { } map-as :> trex-boxes
     FOURCC_MVEX trex-boxes serialize-container-box ;
+
+! Builds an ISO/IEC 14496-12 Movie Extends (mvex) box with explicit mehd duration.
+:: build-mvex-box-with-duration ( tracks total-duration -- mvex-bytes )
+    tracks [ id>> build-trex-box ] { } map-as :> trex-boxes
+    total-duration build-mehd-box :> mehd-box
+    V{ mehd-box } clone :> children
+    trex-boxes [ :> t-box children t-box push ] each
+    FOURCC_MVEX children >array serialize-container-box ;
 
 ! Builds an ISO/IEC 14496-12 Media (minf) box for video or audio.
 :: build-minf-box ( is-video? sample-entry-box -- minf-bytes )
