@@ -56,7 +56,7 @@ TUPLE: media-timeline
 
         ! Ensure strict monotonicity
         delta-from-start timeline continuous-time>> max :> monotonic-pts
-        monotonic-pts timeline continuous-time>> :> pts-to-return
+        monotonic-pts :> pts-to-return
 
         timeline raw-pts >>last-raw-pts drop
         timeline monotonic-pts sample-duration + >>continuous-time drop

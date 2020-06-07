@@ -56,7 +56,7 @@ TUPLE: transmux-result
                 v-track avcc-box >>codec-private drop
             ] when
 
-            v-track converted-samples >array >>samples drop
+            v-track converted-samples >>samples drop
             v-track
         ] [
             v-track codec>> "hev1" = [
@@ -93,7 +93,7 @@ TUPLE: transmux-result
                     v-track hvcc-box >>codec-private drop
                 ] when
 
-                v-track converted-samples >array >>samples drop
+                v-track converted-samples >>samples drop
                 v-track
             ] [
                 v-track
@@ -127,7 +127,7 @@ TUPLE: transmux-result
                     s stripped-samples push
                 ] if
             ] each
-            a-track stripped-samples >array >>samples drop
+            a-track stripped-samples >>samples drop
         ] when
         a-track
     ] if ;

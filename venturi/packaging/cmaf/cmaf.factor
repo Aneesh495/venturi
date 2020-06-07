@@ -131,8 +131,9 @@ IN: venturi.packaging.cmaf
 :: build-mvex-box-with-duration ( tracks total-duration -- mvex-bytes )
     tracks [ id>> build-trex-box ] { } map-as :> trex-boxes
     total-duration build-mehd-box :> mehd-box
-    V{ mehd-box } clone :> children
-    trex-boxes [ :> t-box children t-box push ] each
+    V{ } clone :> children
+    mehd-box children push
+    trex-boxes [ children push ] each
     FOURCC_MVEX children >array serialize-container-box ;
 
 ! Builds an ISO/IEC 14496-12 Media (minf) box for video or audio.
@@ -148,7 +149,7 @@ IN: venturi.packaging.cmaf
     track timescale>> :> timescale
 
     ! tkhd
-    track id>> 0 track width>> >float track height>> >float build-tkhd-box :> tkhd-box
+    track id>> 0 track width>> >float track height>> >float is-video? not build-tkhd-box :> tkhd-box
 
     ! mdhd
     timescale 0 "und" build-mdhd-box :> mdhd-box
@@ -185,7 +186,9 @@ IN: venturi.packaging.cmaf
     build-cmaf-ftyp-box :> ftyp-box
 
     ! mvhd
-    1000 0 1 tracks [ id>> ] [ max ] each 1 + build-mvhd-box :> mvhd-box
+    1 :> max-id!
+    tracks [ id>> max-id max max-id! ] each
+    1000 0 max-id 1 + build-mvhd-box :> mvhd-box
 
     ! trak boxes
     tracks [ build-cmaf-trak-box ] { } map-as :> trak-boxes
@@ -194,9 +197,10 @@ IN: venturi.packaging.cmaf
     tracks build-mvex-box :> mvex-box
 
     ! moov
-    V{ mvhd-box } clone :> moov-children
-    trak-boxes [ :> trk-box moov-children trk-box push ] each
-    moov-children mvex-box push
+    V{ } clone :> moov-children
+    mvhd-box moov-children push
+    trak-boxes [ moov-children push ] each
+    mvex-box moov-children push
 
     FOURCC_MOOV moov-children >array serialize-container-box :> moov-box
 

@@ -35,7 +35,7 @@ TUPLE: media-chunk
                 V{ } clone current-gop!
             ] when
         ] when
-        current-gop s push
+        s current-gop push
     ] each
 
     current-gop length zero? not [
@@ -76,7 +76,7 @@ TUPLE: media-chunk
                     a-idx a-samples nth :> a-s
                     a-s pts>> a-timescale 1000 rescale-time :> a-ms
                     a-ms chunk-end-ms < [
-                        cur-a a-s push
+                        a-s cur-a push
                         a-idx 1 + a-idx!
                     ] [
                         t stop!
@@ -92,7 +92,7 @@ TUPLE: media-chunk
                 s pts>> cur-start-pts!
             ] when
 
-            cur-v s push
+            s cur-v push
             cur-dur s duration>> + cur-dur!
         ] each
 
