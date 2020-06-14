@@ -5,7 +5,8 @@
 ! and media playlist authoring with CMAF byte-range and fragment indexing.
 
 USING: accessors arrays formatting kernel locals math math.functions
-math.order math.parser sequences strings vectors venturi.common.types ;
+math.order math.parser sequences strings vectors venturi.common.types
+venturi.common.utils ;
 IN: venturi.manifests.hls
 
 ! Stream variant definition for HLS Multivariant Master Playlists.
@@ -67,6 +68,75 @@ TUPLE: hls-variant
 
         inf concat lines push
         v uri>> lines push
+    ] each
+
+    lines "\n" join "\n" append ;
+
+! Formats a single #EXTINF tag line with segment duration in seconds.
+:: format-extinf-line ( segment -- line )
+    segment segment-duration-seconds :> sec
+    "#EXTINF:" sec "%.3f" sprintf append "," append ;
+
+! Builds an RFC 8216 HLS VOD Media Playlist for completed streams.
+:: build-hls-vod-playlist ( segments init-uri -- m3u8-string )
+    V{ } clone :> lines
+    "#EXTM3U" lines push
+    "#EXT-X-VERSION:7" lines push
+    "#EXT-X-PLAYLIST-TYPE:VOD" lines push
+
+    0.0 :> max-dur!
+    segments [
+        segment-duration-seconds max-dur max max-dur!
+    ] each
+
+    max-dur ceiling >integer 1 max :> target-dur
+    "#EXT-X-TARGETDURATION:" target-dur number>string append lines push
+    "#EXT-X-MEDIA-SEQUENCE:1" lines push
+    "#EXT-X-MAP:URI=\"" init-uri append "\"" append lines push
+    "" lines push
+
+    segments [
+        :> seg
+        seg format-extinf-line lines push
+        seg uri>> lines push
+    ] each
+
+    "#EXT-X-ENDLIST" lines push
+    lines "\n" join "\n" append ;
+
+! Builds an RFC 8216 HLS Live Media Playlist maintaining a sliding window of recent fragments.
+:: build-hls-live-playlist ( all-segments window-size init-uri -- m3u8-string )
+    V{ } clone :> lines
+    "#EXTM3U" lines push
+    "#EXT-X-VERSION:7" lines push
+
+    all-segments length :> total-count
+    total-count window-size - 0 max :> start-idx
+    total-count start-idx - :> kept-count
+    start-idx total-count all-segments subseq-safe :> window-segments
+
+    0.0 :> max-dur!
+    window-segments [
+        segment-duration-seconds max-dur max max-dur!
+    ] each
+
+    max-dur ceiling >integer 1 max :> target-dur
+    "#EXT-X-TARGETDURATION:" target-dur number>string append lines push
+
+    window-segments length 0 > [
+        0 window-segments nth sequence>> :> seq-num
+        "#EXT-X-MEDIA-SEQUENCE:" seq-num number>string append lines push
+    ] [
+        "#EXT-X-MEDIA-SEQUENCE:1" lines push
+    ] if
+
+    "#EXT-X-MAP:URI=\"" init-uri append "\"" append lines push
+    "" lines push
+
+    window-segments [
+        :> seg
+        seg format-extinf-line lines push
+        seg uri>> lines push
     ] each
 
     lines "\n" join "\n" append ;
