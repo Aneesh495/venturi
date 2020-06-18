@@ -28,8 +28,9 @@ IN: venturi.manifests.dash
             ! Count repeats of equal duration
             i 1 + :> next-i!
             [
-                next-i segments length <
-                next-i segments nth duration>> dur = and
+                next-i segments length < [
+                    next-i segments nth duration>> dur =
+                ] [ f ] if
             ] [
                 r 1 + r!
                 next-i 1 + next-i!
