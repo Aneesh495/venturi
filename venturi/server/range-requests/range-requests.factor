@@ -34,8 +34,8 @@ TUPLE: byte-range
 :: parse-range-header ( header-str total-len -- byte-range/f )
     header-str "bytes=" head? [
         header-str 6 tail :> spec
-        spec "-" subseq-of? [
-            "-" spec split-subseq :> parts
+        "-" spec subseq? [
+            spec "-" split-subseq :> parts
             parts length 2 = [
                 0 parts nth :> p0
                 1 parts nth :> p1
@@ -44,11 +44,13 @@ TUPLE: byte-range
                     ! Standard range: bytes=start-end
                     p0 string>number :> s
                     p1 string>number :> e
-                    s [ e [
-                        s 0 >= e total-len < and s e <= and [
-                            s e total-len <byte-range>
+                    s [
+                        e [
+                            s 0 >= e total-len < and s e <= and [
+                                s e total-len <byte-range>
+                            ] [ f ] if
                         ] [ f ] if
-                    ] [ f ] if* ] [ f ] if*
+                    ] [ f ] if
                 ] [
                     p0 length 0 > p1 length zero? and [
                         ! Open-ended range: bytes=start-
@@ -57,7 +59,7 @@ TUPLE: byte-range
                             s 0 >= s total-len < and [
                                 s total-len 1 - total-len <byte-range>
                             ] [ f ] if
-                        ] [ f ] if*
+                        ] [ f ] if
                     ] [
                         p0 length zero? p1 length 0 > and [
                             ! Suffix range: bytes=-suffix
@@ -67,7 +69,7 @@ TUPLE: byte-range
                                     total-len suffix-len - 0 max :> s
                                     s total-len 1 - total-len <byte-range>
                                 ] [ f ] if
-                            ] [ f ] if*
+                            ] [ f ] if
                         ] [ f ] if
                     ] if
                 ] if

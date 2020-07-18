@@ -14,7 +14,7 @@ TUPLE: live-ring-buffer
     { capacity integer read-only }
     { segments vector }
     { segment-map hashtable }
-    { init-segment media-segment }
+    init-segment
     { lock lock } ;
 
 : <live-ring-buffer> ( capacity -- ring )

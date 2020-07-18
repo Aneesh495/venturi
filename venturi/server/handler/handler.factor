@@ -65,25 +65,25 @@ TUPLE: http-response
 
 ! Parses raw HTTP header text into an http-request tuple.
 :: parse-http-request ( raw-header-str raw-body -- req/f )
-    "\r\n" raw-header-str split-subseq :> lines
+    raw-header-str "\r\n" split-subseq :> lines
     lines length zero? [ f ] [
         0 lines nth " " split-subseq :> req-line
         req-line length 3 >= [
-            0 req-line nth >upper :> method
-            1 req-line nth :> full-path
+            0 req-line nth >upper >string :> method
+            1 req-line nth >string :> full-path
 
-            "?" full-path split-subseq :> path-parts
-            0 path-parts nth :> raw-path
-            path-parts length 1 > [ 1 path-parts nth ] [ "" ] if :> query
+            full-path "?" split-subseq :> path-parts
+            0 path-parts nth >string :> raw-path
+            path-parts length 1 > [ 1 path-parts nth >string ] [ "" ] if :> query
 
             ! Parse headers into lowercase hashtable
             H{ } clone :> hdr-table
             lines 1 tail [
                 :> line
-                ": " line split-subseq :> kv
+                line ": " split-subseq :> kv
                 kv length 2 = [
-                    0 kv nth >lower :> k
-                    1 kv nth :> v
+                    0 kv nth >lower >string :> k
+                    1 kv nth >string :> v
                     v k hdr-table set-at
                 ] when
             ] each
@@ -182,7 +182,10 @@ TUPLE: http-response
 
             ! Locate asset payload: check static file-map first, then live ring buffer
             f :> payload!
-            clean-path file-map ?at [ payload! drop ] [
+            clean-path file-map ?at :> ( map-val map-found? )
+            map-found? [
+                map-val payload!
+            ] [
                 live-ring [
                     clean-path live-ring get-live-segment [
                         data>> payload!
