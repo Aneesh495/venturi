@@ -5,6 +5,7 @@
 *.dylib
 *.dll
 *.exe
+bench_simd
 
 # Factor image and compilation artifacts
 *.image
