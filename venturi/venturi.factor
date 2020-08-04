@@ -8,9 +8,9 @@
 USING: accessors arrays command-line formatting io kernel locals math
 math.parser namespaces sequences strings venturi.cli.benchmark
 venturi.cli.inspect venturi.cli.package venturi.cli.serve
-venturi.tests.codecs venturi.tests.common venturi.tests.isobmff
-venturi.tests.manifests venturi.tests.mpegts venturi.tests.packaging
-venturi.tests.server ;
+venturi.tests.codecs venturi.tests.common venturi.tests.integration
+venturi.tests.isobmff venturi.tests.manifests venturi.tests.mpegts
+venturi.tests.packaging venturi.tests.server ;
 IN: venturi
 
 :: print-usage ( -- )
@@ -38,6 +38,7 @@ IN: venturi
     run-all-packaging-tests drop
     run-manifest-tests
     run-server-tests
+    run-integration-tests
     "All test suites executed successfully." print ;
 
 :: venturi-main ( -- )
